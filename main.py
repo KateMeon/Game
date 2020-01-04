@@ -35,7 +35,7 @@ class Player(sprite.Sprite):
         self.speed_y = 20
         self.startX = 120
         self.startY = 400
-        self.image = Surface((30, 30))
+        self.image = Surface((100, 100))
         self.image = image.load('gamer.png')
         self.rect = Rect(self.startX, self.startY, 30, 30)
 
@@ -48,6 +48,7 @@ class Player(sprite.Sprite):
             if hero.rect.x < -20:
                 hero.rect.x = -20
                 left = False
+                self.image = image.load('gamer.png')
         if right_r:
             self.step_r = (self.step_r + 1) % len(self.step_right)
             self.image = image.load(self.step_right[self.step_r])
@@ -62,28 +63,60 @@ class Player(sprite.Sprite):
 
 
 class Enemy(sprite.Sprite):
+    global enemys
     def __init__(self):
         sprite.Sprite.__init__(self)
-        self.enemys = [('man1.png'), ('man2.png'), ('man3.png'), ('man4.png'), ('man5.png'),
-                       ('man6.png')]
-        self.image = pygame.Surface((10, 10))
-        self.image = image.load(choice(self.enemys))
-        self.rect = self.image.get_rect()
-        if len(enemys) > 0:
-            for e in enemys:
-                self.rect.y = randrange(10, 400)
-
+        self.enemys = [('man1.png'), ('man2.png'), ('man3.png')]
+        self.enemys_r = [('man_r1.png'), ('man_r2.png'), ('man_r3.png')]
+        self.image = pygame.Surface((100, 100))
+        self.right_left = choice(['left', 'right'])
+        print(self.right_left)
+        if self.right_left == 'left':
+            self.image = image.load(choice(self.enemys))
+            self.rect = self.image.get_rect()
+        else:
+            self.image = image.load(choice(self.enemys_r))
+            self.rect = self.image.get_rect()
+        if len(enemys) > 1:
+            self.coords_y = [e.rect.y for e in enemys]
+            self.rect.y = randrange(10, 400)
+            tf = False
+            while not tf:
+                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y])
+                if not tf:
+                    self.rect.y = randrange(10, 400)
         else:
             self.rect.y = randrange(10, 400)
-        self.rect.x = randrange(-50, -20)
-        self.speed_x = randrange(5, 10)
-    def update(self):
-        self.rect.x -= self.speed_x
-        if self.rect.x < -30:
+        if self.right_left == 'left':
             self.rect.x = randrange(540, 600)
-            self.rect.y = randrange(10, 400)
-            self.speed_x = randrange(1, 5)
+        else:
+            self.rect.x = randrange(-120, -70)
+        self.speed_x = randrange(1, 5)
 
+    def update(self):
+        self.border = False
+        if self.right_left == 'left':
+            self.rect.x -= self.speed_x
+            if self.rect.x < -70:
+                self.border = True
+                self.image = image.load(choice(self.enemys))
+                self.rect.x = randrange(540, 600)
+                self.speed_x = randrange(1, 5)
+        else:
+            self.rect.x += self.speed_x
+            if self.rect.x > 600:
+                self.border = True
+                self.image = image.load(choice(self.enemys_r))
+                self.rect.x = randrange(-120, -70)
+                self.speed_x = randrange(1, 5)
+        if self.border:
+            self.coords_y = [e.rect.y for e in enemys]
+            self.rect.y = randrange(10, 400)
+            tf = False
+            while not tf:
+                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y])
+                if not tf:
+                    self.rect.y = randrange(10, 400)
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
 
@@ -122,7 +155,7 @@ while running:
             hero = Player()
             left = right = False
             all_sprites.add(hero)
-            for i in range(3):
+            for i in range(randrange(2, 5)):
                 enemy = Enemy()
                 all_sprites.add(enemy)
                 enemys.add(enemy)
@@ -157,6 +190,5 @@ while running:
             e.draw(screen)
         hits = pygame.sprite.spritecollide(hero, enemys, False)
         if hits:
-            running = False
-            game_over()
+            print('est')
     pygame.display.update()
