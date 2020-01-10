@@ -4,13 +4,14 @@ from random import choice, randrange
 
 running = True
 menu = True
+game_over_scene = False
 
 width = 500
 height = 500
 size = width, height
 pygame.init()
 screen = pygame.display.set_mode(size)
-pygame.display.set_caption('GREEN ROADs')
+pygame.display.set_caption('RUN')
 
 timer = pygame.time.Clock()
 fps = 60
@@ -19,6 +20,7 @@ fon = pygame.image.load('fon.jpg')
 fon_rect = fon.get_rect()
 screen.blit(fon, fon_rect)
 pygame.display.update()
+
 all_sprites = pygame.sprite.Group()
 enemys = pygame.sprite.Group()
 
@@ -41,6 +43,7 @@ class Player(sprite.Sprite):
 
     def update(self, left_l, right_r):
         global right, left
+
         if left_l:
             self.step_l = (self.step_l + 1) % len(self.step_right)
             self.image = image.load(self.step_left[self.step_l])
@@ -64,13 +67,13 @@ class Player(sprite.Sprite):
 
 class Enemy(sprite.Sprite):
     global enemys
+
     def __init__(self):
         sprite.Sprite.__init__(self)
         self.enemys = [('man1.png'), ('man2.png'), ('man3.png')]
         self.enemys_r = [('man_r1.png'), ('man_r2.png'), ('man_r3.png')]
         self.image = pygame.Surface((100, 100))
         self.right_left = choice(['left', 'right'])
-        print(self.right_left)
         if self.right_left == 'left':
             self.image = image.load(choice(self.enemys))
             self.rect = self.image.get_rect()
@@ -117,20 +120,44 @@ class Enemy(sprite.Sprite):
                 tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y])
                 if not tf:
                     self.rect.y = randrange(10, 400)
+
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
 
 
+class Camera:
+    def __init__(self):
+        self.dy = 1
+
+    def apply(self, obj):
+        obj.rect.y += self.dy
+
+
 def menu_scene():
     global fon, fon_rect
+
+    intro_text = ['RUN', 'if you can']
+
     fon = pygame.image.load('fon.jpg')
     fon_rect = fon.get_rect()
     screen.blit(fon, fon_rect)
-    pygame.display.update()
+
+    text_coord = 50
+    font = pygame.font.Font(None, 30)
+
+    for line in intro_text:
+        string_rendered = font.render(line, 1, pygame.Color('black'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 50
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
 
 
 def game_scene():
     global fon, fon_rect
+
     fon = pygame.image.load('fon_game.jpeg')
     fon_rect = fon.get_rect()
     screen.blit(fon, fon_rect)
@@ -139,6 +166,7 @@ def game_scene():
 
 def game_over():
     global fon, fon_rect
+
     fon = pygame.image.load('fon_game.jpeg')
     fon_rect = fon.get_rect()
     screen.blit(fon, fon_rect)
@@ -150,45 +178,64 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and menu:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and \
+                (menu or game_over_scene):
             menu = False
-            hero = Player()
-            left = right = False
-            all_sprites.add(hero)
-            for i in range(randrange(2, 5)):
-                enemy = Enemy()
-                all_sprites.add(enemy)
-                enemys.add(enemy)
+            if not game_over_scene:
+                hero = Player()
+                left = right = False
+                all_sprites.add(hero)
+                camera = Camera()
+
+                UPDATECAMERA = USEREVENT + 0
+                for i in range(randrange(2, 5)):
+                    enemy = Enemy()
+                    all_sprites.add(enemy)
+                    enemys.add(enemy)
+
+            game_over_scene = False
             game_scene()
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not menu:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not menu and not\
+                game_over_scene:
             left = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not menu:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not menu and not\
+                game_over_scene:
             right = True
 
-        if event.type == pygame.KEYUP and event.key == pygame.K_LEFT and not menu:
+        if event.type == pygame.KEYUP and event.key == pygame.K_LEFT and not menu and not\
+                game_over_scene:
             left = False
             hero.image = image.load('gamer.png')
-        if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT and not menu:
+        if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT and not menu and not\
+                game_over_scene:
             right = False
             hero.image = image.load('gamer.png')
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN and not menu:
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN and not menu and not\
+                game_over_scene:
             hero.rect.y += hero.speed_y
             if hero.rect.y > 410:
                 hero.rect.y = 410
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP and not menu:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP and not menu and not\
+                game_over_scene:
             hero.rect.y -= hero.speed_y
             if hero.rect.y < -10:
                 hero.rect.y = -10
         if menu:
             menu_scene()
     screen.blit(fon, (0, 0))
-    if not menu:
+    if not menu and not game_over_scene:
         hero.update(left, right)
         hero.draw(screen)
         for e in enemys:
             e.update()
             e.draw(screen)
         hits = pygame.sprite.spritecollide(hero, enemys, False)
+        if event.type == UPDATECAMERA:
+            for sprite in all_sprites:
+                camera.apply(sprite)
         if hits:
-            print('est')
+            game_over_scene = True
+            game_over()
+        pygame.time.set_timer(UPDATECAMERA, 35)
     pygame.display.update()
