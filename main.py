@@ -25,7 +25,6 @@ pygame.display.update()
 
 all_sprites = pygame.sprite.Group()
 enemys = pygame.sprite.Group()
-lines_grass = pygame.sprite.Group()
 
 
 def terminate():
@@ -42,9 +41,9 @@ class Player(sprite.Sprite):
         self.speed = 5
         self.step_r = 0
         self.step_l = 0
-        self.speed_y = 20
-        self.startX = 120
-        self.startY = 380
+        self.speed_y = 20  # скорость игрока при движении вверх
+        self.startX = 120  # начальное положение игрока по оси х
+        self.startY = 380  # начальное положение игрока по оси у
         self.image = Surface((100, 100))
         self.image = image.load('player.png')
         self.rect = Rect(self.startX, self.startY, 30, 30)
@@ -54,21 +53,22 @@ class Player(sprite.Sprite):
 
         if left_l:
             self.step_l = (self.step_l + 1) % len(self.step_right)
-            self.image = image.load(self.step_left[self.step_l])
+            self.image = image.load(self.step_left[self.step_l])  # анимация движения влево
             hero.rect.x -= hero.speed
             if hero.rect.x < -20:
                 hero.rect.x = -20
                 left = False
-                self.image = image.load('player.png')
+                self.image = image.load('player.png')  # остановка игрока при касании границы
         if right_r:
             self.step_r = (self.step_r + 1) % len(self.step_right)
-            self.image = image.load(self.step_right[self.step_r])
+            self.image = image.load(self.step_right[self.step_r])  # анимация движения вправо
             hero.rect.x += hero.speed
             if hero.rect.x > 420:
                 hero.rect.x = 420
                 right = False
-                self.image = image.load('player.png')
-        self.rect.y += 1
+                self.image = image.load(
+                    'player.png')  # остановка анимации игрока при касании границы
+        self.rect.y += 1  # "движение камеры"
 
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
@@ -80,7 +80,7 @@ class Enemy(sprite.Sprite):
         self.enemys = [('man1.png'), ('man2.png'), ('man3.png')]
         self.enemys_r = [('man_r1.png'), ('man_r2.png'), ('man_r3.png')]
         self.image = pygame.Surface((100, 100))
-        self.right_left = choice(['left', 'right'])
+        self.right_left = choice(['left', 'right'])  # рандомный выбор направления движения игрока
         if self.right_left == 'left':
             self.image = image.load(choice(self.enemys))
             self.rect = self.image.get_rect()
@@ -90,7 +90,7 @@ class Enemy(sprite.Sprite):
             self.rect = self.image.get_rect()
             self.rect.x = randrange(-120, -70)
         self.rect.y = randrange(-10, 400)
-        if len(enemys) > 1:
+        if len(enemys) > 1:  # проверка координат по оси у
             self.coords_y = [e.rect.y for e in enemys]
             tf = False
             while not tf:
@@ -103,7 +103,7 @@ class Enemy(sprite.Sprite):
         self.border = False
         if self.right_left == 'left':
             self.rect.x -= self.speed_x
-            if self.rect.x < -70:
+            if self.rect.x < -70:  # проверка касания границы
                 self.border = True
                 self.image = image.load(choice(self.enemys))
                 self.rect.x = randrange(540, 600)
@@ -170,7 +170,7 @@ def start_scene():
         clock.tick(fps)
 
 
-def check_rotation(keys):
+def check_rotation(keys):  # проверка нажатия клавиш
     left = right = False
     if keys[pygame.K_LEFT]:
         left = True
@@ -179,7 +179,7 @@ def check_rotation(keys):
     return left, right
 
 
-def draw_text(surf, score):
+def draw_text(surf, score):  # отрисовка счета игры
     font = pygame.font.Font(None, 30)
     text_surface = font.render(score, 1, pygame.Color('black'))
     text_rect = text_surface.get_rect()
@@ -189,8 +189,8 @@ def draw_text(surf, score):
 
 
 def game_scene():
-    global fon, fon_rect, game, running, hero, game_over_scene
-
+    global fon, fon_rect, game, hero, game_over_scene
+    # загрузка звукового сопровождения игры
     pygame.mixer.init()
     pygame.mixer.music.load('gazonokosilka.mp3')
     pygame.mixer.music.play(-1, 0.0)
@@ -203,38 +203,39 @@ def game_scene():
     left = right = False
     score = 0
 
-    [Enemy() for i in range(randrange(3, 6))]
+    [Enemy() for i in range(randrange(3, 6))]  # создание рандомного количества врагов
 
     while game:
         clock.tick(fps)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                running = False
                 terminate()
 
-            left, right = check_rotation(pygame.key.get_pressed())
-            if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
-                left = False
-                hero.image = image.load('player.png')
-            if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
-                right = False
-                hero.image = image.load('player.png')
+            left, right = check_rotation(pygame.key.get_pressed())  # проверка нажатых клавиш
             if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
                 hero.rect.y -= hero.speed_y
                 if hero.rect.y < -10:
                     hero.rect.y = -10
                 score += 1
+            # проверка отпуска клавиш
+            if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
+                left = False
+                hero.image = image.load('player.png')  # остановка анимации игрока
+            if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
+                right = False
+                hero.image = image.load('player.png')  # остановка анимации игрока
+        # обновление всех персонажей
         screen.blit(fon, (0, 0))
         hero.update(left, right)
         hero.draw(screen)
         enemys.update()
         enemys.draw(screen)
-        lines_grass.update()
-        lines_grass.draw(screen)
-        draw_text(screen, str(score))
+        draw_text(screen, str(score))  # отрисовка счета
+        # проверка на пересечение игрока с врагами и касания нижней границы
         if pygame.sprite.spritecollide(hero, enemys, False) or hero.rect.bottom > 480:
-            game = False
+            game = False  # конец игры
             game_over_scene = True
+            # прекращение музыкального сопровождения игры и загрузка последнего звука проигрыша
             pygame.mixer.music.pause()
             pygame.mixer.music.load('oh.mp3')
             pygame.mixer.music.play(1, 0.0)
@@ -245,13 +246,13 @@ def game_over():
     global fon, fon_rect, game_over_scene, game, start, all_sprites, enemys
 
     intro_text = ['GAME', 'OVER', 'Press \'space\' to start over']
-
+    # загрузка фона
     fon = pygame.image.load('fon.jpg')
     fon_rect = fon.get_rect()
     screen.blit(fon, fon_rect)
-
+    # координаты текста
     text_coord = 50
-
+    # загрузка текста о проигрыше
     for line in intro_text:
         coord_x = 50
         if line == 'GAME' or line == 'OVER':
@@ -278,9 +279,10 @@ def game_over():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                # возвращение к стартовому экрану
                 start = True
                 game_over_scene = False
-
+                # обновление групп
                 all_sprites = pygame.sprite.Group()
                 enemys = pygame.sprite.Group()
 
@@ -297,4 +299,3 @@ while running:
         game_scene()
     elif game_over_scene:
         game_over()
-    clock.tick(fps)
