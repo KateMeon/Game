@@ -1,10 +1,12 @@
+import sys
 import pygame
 from pygame import *
 from random import choice, randrange
 
 running = True
-menu = True
+start = True
 game_over_scene = False
+game = False
 
 width = 500
 height = 500
@@ -13,7 +15,7 @@ pygame.init()
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption('RUN')
 
-timer = pygame.time.Clock()
+clock = pygame.time.Clock()
 fps = 60
 
 fon = pygame.image.load('fon.jpg')
@@ -23,11 +25,17 @@ pygame.display.update()
 
 all_sprites = pygame.sprite.Group()
 enemys = pygame.sprite.Group()
+lines_grass = pygame.sprite.Group()
+
+
+def terminate():
+    pygame.quit()
+    sys.exit()
 
 
 class Player(sprite.Sprite):
     def __init__(self):
-        sprite.Sprite.__init__(self)
+        super().__init__(all_sprites)
         self.step_right = [('right_1.png'), ('right_2.png'), ('right_3.png'), ('right_4.png')]
         self.step_left = [('left_1.png'), ('left_2.png'), ('left_3.png'), ('left_4.png')]
         self.move = 0
@@ -36,13 +44,13 @@ class Player(sprite.Sprite):
         self.step_l = 0
         self.speed_y = 20
         self.startX = 120
-        self.startY = 400
+        self.startY = 380
         self.image = Surface((100, 100))
-        self.image = image.load('gamer.png')
+        self.image = image.load('player.png')
         self.rect = Rect(self.startX, self.startY, 30, 30)
 
     def update(self, left_l, right_r):
-        global right, left
+        global right, left, game
 
         if left_l:
             self.step_l = (self.step_l + 1) % len(self.step_right)
@@ -51,7 +59,7 @@ class Player(sprite.Sprite):
             if hero.rect.x < -20:
                 hero.rect.x = -20
                 left = False
-                self.image = image.load('gamer.png')
+                self.image = image.load('player.png')
         if right_r:
             self.step_r = (self.step_r + 1) % len(self.step_right)
             self.image = image.load(self.step_right[self.step_r])
@@ -59,17 +67,16 @@ class Player(sprite.Sprite):
             if hero.rect.x > 420:
                 hero.rect.x = 420
                 right = False
-                self.image = image.load('gamer.png')
+                self.image = image.load('player.png')
+        self.rect.y += 1
 
     def draw(self, screen):
         screen.blit(self.image, (self.rect.x, self.rect.y))
 
 
 class Enemy(sprite.Sprite):
-    global enemys
-
     def __init__(self):
-        sprite.Sprite.__init__(self)
+        super().__init__(enemys)
         self.enemys = [('man1.png'), ('man2.png'), ('man3.png')]
         self.enemys_r = [('man_r1.png'), ('man_r2.png'), ('man_r3.png')]
         self.image = pygame.Surface((100, 100))
@@ -77,24 +84,20 @@ class Enemy(sprite.Sprite):
         if self.right_left == 'left':
             self.image = image.load(choice(self.enemys))
             self.rect = self.image.get_rect()
+            self.rect.x = randrange(540, 600)
         else:
             self.image = image.load(choice(self.enemys_r))
             self.rect = self.image.get_rect()
+            self.rect.x = randrange(-120, -70)
+        self.rect.y = randrange(-10, 400)
         if len(enemys) > 1:
             self.coords_y = [e.rect.y for e in enemys]
-            self.rect.y = randrange(10, 400)
             tf = False
             while not tf:
-                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y])
+                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y if i != self.rect.y])
                 if not tf:
-                    self.rect.y = randrange(10, 400)
-        else:
-            self.rect.y = randrange(10, 400)
-        if self.right_left == 'left':
-            self.rect.x = randrange(540, 600)
-        else:
-            self.rect.x = randrange(-120, -70)
-        self.speed_x = randrange(1, 5)
+                    self.rect.y = randrange(-10, 400)
+        self.speed_x = randrange(2, 6)
 
     def update(self):
         self.border = False
@@ -113,129 +116,185 @@ class Enemy(sprite.Sprite):
                 self.rect.x = randrange(-120, -70)
                 self.speed_x = randrange(1, 5)
         if self.border:
-            self.coords_y = [e.rect.y for e in enemys]
             self.rect.y = randrange(10, 400)
+            self.coords_y = [e.rect.y for e in enemys]
             tf = False
             while not tf:
-                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y])
+                tf = all([abs(self.rect.y - i) >= 100 for i in self.coords_y if i != self.rect.y])
                 if not tf:
-                    self.rect.y = randrange(10, 400)
-
-    def draw(self, screen):
-        screen.blit(self.image, (self.rect.x, self.rect.y))
+                    self.rect.y = randrange(-10, 400)
+        self.rect.y += 1
 
 
-class Camera:
-    def __init__(self):
-        self.dy = 1
+def start_scene():
+    global fon, fon_rect, start, game
 
-    def apply(self, obj):
-        obj.rect.y += self.dy
+    intro_text = ['RUN', 'if you can', 'Press \'space\' to start the game']
+
+    fon = pygame.image.load('fon.jpg')
+    fon_rect = fon.get_rect()
+    screen.blit(fon, fon_rect)
+
+    text_coord = 100
+
+    for line in intro_text:
+        if line == 'RUN':
+            font = pygame.font.Font(None, 200)
+            color = '#00733C'
+            coord_x = 100
+        else:
+            font = pygame.font.Font(None, 40)
+            if line == 'if you can':
+                coord_x = 180
+                color = 'black'
+            else:
+                text_coord += 30
+                color = '#1C1C1C'
+                coord_x = 50
+        string_rendered = font.render(line, 1, pygame.Color(color))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = coord_x
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+
+    while start:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            if pygame.key.get_pressed()[pygame.K_SPACE]:
+                start = False
+                game = True
+        pygame.display.flip()
+        clock.tick(fps)
 
 
-def menu_scene():
-    global fon, fon_rect
+def check_rotation(keys):
+    left = right = False
+    if keys[pygame.K_LEFT]:
+        left = True
+    if keys[pygame.K_RIGHT]:
+        right = True
+    return left, right
 
-    intro_text = ['RUN', 'if you can']
+
+def draw_text(surf, score):
+    font = pygame.font.Font(None, 30)
+    text_surface = font.render(score, 1, pygame.Color('black'))
+    text_rect = text_surface.get_rect()
+    text_rect.y = 450
+    text_rect.x = 420
+    surf.blit(text_surface, text_rect)
+
+
+def game_scene():
+    global fon, fon_rect, game, running, hero, game_over_scene
+
+    pygame.mixer.init()
+    pygame.mixer.music.load('gazonokosilka.mp3')
+    pygame.mixer.music.play(-1, 0.0)
+
+    fon = pygame.image.load('fon_game.jpeg')
+    fon_rect = fon.get_rect()
+    screen.blit(fon, fon_rect)
+    pygame.display.update()
+    hero = Player()
+    left = right = False
+    score = 0
+
+    [Enemy() for i in range(randrange(3, 6))]
+
+    while game:
+        clock.tick(fps)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+                terminate()
+
+            left, right = check_rotation(pygame.key.get_pressed())
+            if event.type == pygame.KEYUP and event.key == pygame.K_LEFT:
+                left = False
+                hero.image = image.load('player.png')
+            if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT:
+                right = False
+                hero.image = image.load('player.png')
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_UP:
+                hero.rect.y -= hero.speed_y
+                if hero.rect.y < -10:
+                    hero.rect.y = -10
+                score += 1
+        screen.blit(fon, (0, 0))
+        hero.update(left, right)
+        hero.draw(screen)
+        enemys.update()
+        enemys.draw(screen)
+        lines_grass.update()
+        lines_grass.draw(screen)
+        draw_text(screen, str(score))
+        if pygame.sprite.spritecollide(hero, enemys, False) or hero.rect.bottom > 480:
+            game = False
+            game_over_scene = True
+            pygame.mixer.music.pause()
+            pygame.mixer.music.load('oh.mp3')
+            pygame.mixer.music.play(1, 0.0)
+        pygame.display.update()
+
+
+def game_over():
+    global fon, fon_rect, game_over_scene, game, start, all_sprites, enemys
+
+    intro_text = ['GAME', 'OVER', 'Press \'space\' to start over']
 
     fon = pygame.image.load('fon.jpg')
     fon_rect = fon.get_rect()
     screen.blit(fon, fon_rect)
 
     text_coord = 50
-    font = pygame.font.Font(None, 30)
 
     for line in intro_text:
-        string_rendered = font.render(line, 1, pygame.Color('black'))
+        coord_x = 50
+        if line == 'GAME' or line == 'OVER':
+            font = pygame.font.Font(None, 200)
+            color = '#00733C'
+            text_coord += 10
+            if line == 'OVER':
+                coord_x = 70
+        else:
+            font = pygame.font.Font(None, 40)
+            text_coord += 30
+            color = '#1C1C1C'
+            coord_x = 80
+        string_rendered = font.render(line, 1, pygame.Color(color))
         intro_rect = string_rendered.get_rect()
         text_coord += 10
         intro_rect.top = text_coord
-        intro_rect.x = 50
+        intro_rect.x = coord_x
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
 
+    while game_over_scene:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                start = True
+                game_over_scene = False
 
-def game_scene():
-    global fon, fon_rect
+                all_sprites = pygame.sprite.Group()
+                enemys = pygame.sprite.Group()
 
-    fon = pygame.image.load('fon_game.jpeg')
-    fon_rect = fon.get_rect()
-    screen.blit(fon, fon_rect)
-    pygame.display.update()
-
-
-def game_over():
-    global fon, fon_rect
-
-    fon = pygame.image.load('fon_game.jpeg')
-    fon_rect = fon.get_rect()
-    screen.blit(fon, fon_rect)
-    pygame.display.update()
+        pygame.display.flip()
 
 
 while running:
-    timer.tick(fps)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and \
-                (menu or game_over_scene):
-            menu = False
-            if not game_over_scene:
-                hero = Player()
-                left = right = False
-                all_sprites.add(hero)
-                camera = Camera()
-
-                UPDATECAMERA = USEREVENT + 0
-                for i in range(randrange(2, 5)):
-                    enemy = Enemy()
-                    all_sprites.add(enemy)
-                    enemys.add(enemy)
-
-            game_over_scene = False
-            game_scene()
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT and not menu and not\
-                game_over_scene:
-            left = True
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT and not menu and not\
-                game_over_scene:
-            right = True
-
-        if event.type == pygame.KEYUP and event.key == pygame.K_LEFT and not menu and not\
-                game_over_scene:
-            left = False
-            hero.image = image.load('gamer.png')
-        if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT and not menu and not\
-                game_over_scene:
-            right = False
-            hero.image = image.load('gamer.png')
-
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN and not menu and not\
-                game_over_scene:
-            hero.rect.y += hero.speed_y
-            if hero.rect.y > 410:
-                hero.rect.y = 410
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_UP and not menu and not\
-                game_over_scene:
-            hero.rect.y -= hero.speed_y
-            if hero.rect.y < -10:
-                hero.rect.y = -10
-        if menu:
-            menu_scene()
-    screen.blit(fon, (0, 0))
-    if not menu and not game_over_scene:
-        hero.update(left, right)
-        hero.draw(screen)
-        for e in enemys:
-            e.update()
-            e.draw(screen)
-        hits = pygame.sprite.spritecollide(hero, enemys, False)
-        if event.type == UPDATECAMERA:
-            for sprite in all_sprites:
-                camera.apply(sprite)
-        if hits:
-            game_over_scene = True
-            game_over()
-        pygame.time.set_timer(UPDATECAMERA, 35)
-    pygame.display.update()
+            terminate()
+    if start:
+        start_scene()
+    elif game:
+        game_scene()
+    elif game_over_scene:
+        game_over()
+    clock.tick(fps)
